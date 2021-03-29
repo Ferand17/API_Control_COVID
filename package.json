@@ -1,0 +1,25 @@
+{
+  "name": "miapractica1_201700858",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elfer17/MIAPractica1_201700858.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/elfer17/MIAPractica1_201700858/issues"
+  },
+  "homepage": "https://github.com/elfer17/MIAPractica1_201700858#readme",
+  "devDependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "mysql": "^2.18.1",
+    "nodemon": "^2.0.7"
+  }
+}
