@@ -176,7 +176,7 @@ app.delete('/eliminarTemporal',(req, res) => {
 // eliminarModelo
 
 app.delete('/eliminarModelo',(req, res) => {
-    const sql = `DROP TABLE `;
+    const sql = `drop TABLE AplicacionTratamiento,Conocido,ConocidoVictima,Hospital,RegistroHospital,Tratamiento,Ubicacion,UbicacionVictima,Victima;`;
     connection.query(sql, error => {
         if (error) throw error;
         res.send('Modelo eliminado')
@@ -228,7 +228,175 @@ app.post('/cargarTemporal',(req, res) => {
 // cargarModelo
 
 app.post('/cargarModelo',(req, res) => {
-    var sql = ``;
+    var sql = `
+    CREATE TABLE Victima (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        nombre varchar(255) NOT NULL,
+        apellido varchar(255) NOT NULL,
+        direccion varchar(255) NOT NULL,
+        fecha_primera_sospecha TIMESTAMP NOT NULL,
+        fecha_confirmacion TIMESTAMP NOT NULL,
+        fecha_muerte TIMESTAMP DEFAULT NULL,
+        estado varchar(255) NOT NULL,
+        PRIMARY KEY (id)
+    );
+    CREATE TABLE Hospital (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        nombre varchar(255) NOT NULL,
+        direccion varchar(255) NOT NULL,
+        PRIMARY KEY (id)
+    );
+    CREATE TABLE Tratamiento (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        descripcion varchar(255) NOT NULL,
+        efectividad INTEGER NOT NULL,
+        PRIMARY KEY (id)
+    );
+    CREATE TABLE Ubicacion (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        direccion varchar(255) NOT NULL,
+        PRIMARY KEY (id)
+    );
+    CREATE TABLE Conocido (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        nombre varchar(255) NOT NULL,
+        apellido varchar(255) NOT NULL,
+        PRIMARY KEY (id)
+    );
+    CREATE TABLE UbicacionVictima (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        victima INTEGER NOT NULL,
+        ubicacion INTEGER NOT NULL,
+        fecha_llegada TIMESTAMP NOT NULL,
+        fecha_retiro TIMESTAMP NOT NULL,
+        PRIMARY KEY (id),
+        FOREIGN KEY (victima) REFERENCES Victima(id),
+        FOREIGN KEY (ubicacion) REFERENCES Ubicacion(id)
+    );
+    CREATE TABLE ConocidoVictima (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        victima INTEGER NOT NULL,
+        conocido INTEGER NOT NULL,
+        contacto varchar(255) NOT NULL,
+        fecha_conocio TIMESTAMP NOT NULL,
+        fecha_inicio_contacto TIMESTAMP NOT NULL,
+        fecha_fin_contacto TIMESTAMP NOT NULL,
+        PRIMARY KEY (id),
+        FOREIGN KEY (victima) REFERENCES Victima(id),
+        FOREIGN KEY (conocido) REFERENCES Conocido(id)
+    );
+    CREATE TABLE RegistroHospital (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        victima INTEGER NOT NULL,
+        hospital INTEGER NOT NULL,
+        PRIMARY KEY (id),
+        FOREIGN KEY (victima) REFERENCES Victima(id),
+        FOREIGN KEY (hospital) REFERENCES Hospital(id)
+    );
+    CREATE TABLE AplicacionTratamiento (
+        id INTEGER NOT NULL AUTO_INCREMENT,
+        registro INTEGER NOT NULL,
+        tratamiento INTEGER NOT NULL,
+        efectividad INTEGER NOT NULL,
+        fecha_inicio_tratamiento TIMESTAMP NOT NULL,
+        fecha_fin_tratamiento TIMESTAMP NOT NULL,
+        PRIMARY KEY (id),
+        FOREIGN KEY (registro) REFERENCES RegistroHospital(id),
+        FOREIGN KEY (tratamiento) REFERENCES Tratamiento(id)
+    );
+    INSERT INTO Victima (nombre,apellido,direccion,fecha_primera_sospecha,fecha_confirmacion,fecha_muerte,estado)
+    SELECT DISTINCT 
+    NOMBRE_VICTIMA,
+    APELLIDO_VICTIMA,
+    DIRECCION_VICTIMA,
+    FECHA_PRIMERA_SOSPECHA,
+    FECHA_CONFIRMACION,
+    FECHA_MUERTE,
+    ESTADO_VICTIMA
+    FROM Temporal;
+
+    INSERT INTO Hospital (nombre, direccion)
+    SELECT DISTINCT NOMBRE_HOSPITAL, 
+    DIRECCION_HOSPITAL
+    FROM Temporal
+    GROUP BY NOMBRE_HOSPITAL;
+
+    INSERT INTO Tratamiento (descripcion,efectividad)
+    SELECT DISTINCT
+    TRATAMIENTO, EFECTIVIDAD
+    FROM Temporal
+    WHERE EFECTIVIDAD != 0;
+
+    INSERT INTO Ubicacion(direccion)
+    SELECT DISTINCT UBICACION_VICTIMA
+    FROM Temporal;
+
+    INSERT INTO Conocido (nombre,apellido)
+    SELECT DISTINCT
+    NOMBRE_ASOCIADO,
+    APELLIDO_ASOCIADO
+    FROM Temporal;
+
+    INSERT INTO UbicacionVictima(victima,ubicacion,fecha_llegada,fecha_retiro)
+    SELECT DISTINCT
+    Victima.id,
+    Ubicacion.id,
+    Temporal.FECHA_LLEGADA,
+    Temporal.FECHA_RETIRO
+    FROM Victima,Ubicacion,Temporal
+    WHERE 
+    Victima.nombre = Temporal.NOMBRE_VICTIMA
+    AND
+    Ubicacion.direccion = Temporal.UBICACION_VICTIMA
+    AND
+    Temporal.UBICACION_VICTIMA != ''
+    GROUP BY Temporal.NOMBRE_VICTIMA,Temporal.UBICACION_VICTIMA;
+
+    INSERT INTO RegistroHospital (victima,hospital)
+SELECT DISTINCT
+Victima.id,
+Hospital.id
+FROM Temporal, Victima,Hospital
+WHERE Temporal.NOMBRE_VICTIMA = Victima.nombre
+AND Temporal.APELLIDO_VICTIMA = Victima.apellido
+AND Temporal.NOMBRE_HOSPITAL = Hospital.nombre
+AND Temporal.NOMBRE_HOSPITAL != '';
+
+INSERT INTO ConocidoVictima (conocido,victima,fecha_conocio,contacto,fecha_inicio_contacto,fecha_fin_contacto)
+SELECT DISTINCT
+Conocido.id,
+Victima.id,
+Temporal.FECHA_CONOCIO,
+Temporal.CONTACTO_FISICO,
+Temporal.FECHA_INICIO_CONTACTO,
+Temporal.FECHA_FIN_CONTACTO
+FROM Temporal,Victima,Conocido
+WHERE 
+Temporal.NOMBRE_VICTIMA = Victima.nombre
+AND Temporal.APELLIDO_VICTIMA = Victima.apellido
+AND Temporal.NOMBRE_ASOCIADO = Conocido.nombre
+AND Temporal.APELLIDO_ASOCIADO = Conocido.apellido
+AND Temporal.NOMBRE_VICTIMA != ''
+AND Temporal.APELLIDO_VICTIMA != ''
+AND Temporal.NOMBRE_ASOCIADO != ''
+AND Temporal.APELLIDO_ASOCIADO != '';
+
+INSERT INTO AplicacionTratamiento(registro,tratamiento,efectividad,fecha_inicio_tratamiento,fecha_fin_tratamiento)
+SELECT DISTINCT
+RegistroHospital.id,
+Tratamiento.id,
+Temporal.EFECTIVIDAD_EN_VICTIMA,
+Temporal.FECHA_INICIO_TRATAMIENTO,
+Temporal.FECHA_FIN_TRATAMIENTO
+FROM RegistroHospital,Tratamiento,Temporal,Victima,Hospital
+WHERE RegistroHospital.victima = Victima.id
+AND Victima.nombre = Temporal.NOMBRE_VICTIMA
+AND Victima.apellido = Temporal.APELLIDO_VICTIMA
+AND RegistroHospital.hospital = Hospital.id
+AND Hospital.nombre = Temporal.NOMBRE_HOSPITAL
+AND Tratamiento.descripcion = Temporal.TRATAMIENTO
+AND Temporal.TRATAMIENTO != '';
+    `;
     connection.query(sql, error => {
         if (error) throw error;
         res.send('Modelo cargado')
