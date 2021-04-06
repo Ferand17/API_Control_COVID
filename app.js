@@ -26,7 +26,17 @@ app.get('/',(req, res) => {
 // Consulta1 
 
 app.get('/consulta1',(req, res) => {
-    const sql = ``;
+    const sql = `
+    SELECT 
+    Hospital.nombre as Nombre_Hospital,
+    Hospital.direccion Direccion_Hospital,
+    COUNT(Victima.id) as Numero_de_Muertos
+    FROM RegistroHospital,Victima,Hospital
+    WHERE Victima.id = RegistroHospital.victima
+    AND Hospital.id = RegistroHospital.hospital
+    AND Victima.fecha_muerte != '0000-00-00 00:00:00'
+    GROUP BY RegistroHospital.hospital
+    `;
     connection.query(sql,(error, results) => {
         if (error) throw error;
         if (results.length > 0){
@@ -304,7 +314,7 @@ app.post('/cargarModelo',(req, res) => {
         FOREIGN KEY (registro) REFERENCES RegistroHospital(id),
         FOREIGN KEY (tratamiento) REFERENCES Tratamiento(id)
     );
-    
+
     INSERT INTO Victima (nombre,apellido,direccion,fecha_primera_sospecha,fecha_confirmacion,fecha_muerte,estado)
     SELECT DISTINCT 
     NOMBRE_VICTIMA,
