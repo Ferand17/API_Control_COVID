@@ -304,6 +304,7 @@ app.post('/cargarModelo',(req, res) => {
         FOREIGN KEY (registro) REFERENCES RegistroHospital(id),
         FOREIGN KEY (tratamiento) REFERENCES Tratamiento(id)
     );
+    
     INSERT INTO Victima (nombre,apellido,direccion,fecha_primera_sospecha,fecha_confirmacion,fecha_muerte,estado)
     SELECT DISTINCT 
     NOMBRE_VICTIMA,
